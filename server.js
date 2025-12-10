@@ -119,6 +119,20 @@ app.post('/api/participants', async (req, res) => {
   }
 });
 
+app.delete('/api/participants/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const result = await pool.query('DELETE FROM participants WHERE id = $1 RETURNING *', [id]);
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Participant not found' });
+    }
+    res.json({ message: 'Participant deleted successfully' });
+  } catch (err) {
+    console.error('Error deleting participant:', err);
+    res.status(500).json({ error: 'Database error' });
+  }
+});
+
 app.get('/api/participants/count', async (req, res) => {
   try {
     const result = await pool.query('SELECT COUNT(*) as count FROM participants');
