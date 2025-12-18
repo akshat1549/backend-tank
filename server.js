@@ -11,13 +11,20 @@ app.use(cors());
 app.use(express.json());
 
 // PostgreSQL Configuration
-const pool = new Pool({
-  user: process.env.DB_USER || 'postgres',
-  host: process.env.DB_HOST || 'localhost',
-  database: process.env.DB_NAME || 'tank_db',
-  password: process.env.DB_PASSWORD || 'your_password',
-  port: process.env.DB_PORT || 5432,
-});
+const pool = new Pool(
+  process.env.DATABASE_URL ? {
+    connectionString: process.env.DATABASE_URL,
+    ssl: {
+      rejectUnauthorized: false
+    }
+  } : {
+    user: process.env.DB_USER || 'postgres',
+    host: process.env.DB_HOST || 'localhost',
+    database: process.env.DB_NAME || 'tank_db',
+    password: process.env.DB_PASSWORD || 'your_password',
+    port: process.env.DB_PORT || 5432,
+  }
+);
 
 // Test database connection
 async function initializeDB() {
@@ -108,6 +115,20 @@ app.post('/api/participants', async (req, res) => {
     res.status(201).json({ message: 'Participant registered successfully', participant: result.rows[0] });
   } catch (err) {
     console.error('Error registering participant:', err);
+    res.status(500).json({ error: 'Database error' });
+  }
+});
+
+app.delete('/api/participants/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const result = await pool.query('DELETE FROM participants WHERE id = $1 RETURNING *', [id]);
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Participant not found' });
+    }
+    res.json({ message: 'Participant deleted successfully' });
+  } catch (err) {
+    console.error('Error deleting participant:', err);
     res.status(500).json({ error: 'Database error' });
   }
 });
